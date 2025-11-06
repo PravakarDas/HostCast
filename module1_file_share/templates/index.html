@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="upload-box">
+  <form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" name="file" id="fileInput" required>
+    <input type="text" name="device_name" id="deviceNameInput" placeholder="Device Name" value="{{ device_name }}" required>
+    <button type="submit">Upload File</button>
+    <div id="progressContainer" style="margin-top: 10px; display: none;">
+      <progress id="progressBar" value="0" max="100" style="width: 100%;"></progress>
+      <span id="progressText">0%</span>
+    </div>
+  </form>
+</section>
+
+<section>
+  <h2>Available Files</h2>
+  <input type="text" id="searchBox" placeholder="Search files..." />
+  
+  <div class="table-wrapper">
+    <table id="file-table">
+      <thead>
+        <tr>
+          <th data-column="filename">Filename</th>
+          <th data-column="device_name">Device Name</th>
+          <th data-column="ip">IP</th>
+          <th data-column="size">Size (bytes)</th>
+          <th data-column="upload_time">Upload Time</th>
+          <th>Preview</th>
+          <th>Download</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fname, meta in files %}
+        <tr data-filename="{{ fname }}">
+          <td>{{ fname }}</td>
+          <td>{{ meta.device_name }}</td>
+          <td>{{ meta.ip }}</td>
+          <td>{{ meta.size }}</td>
+          <td>{{ meta.upload_time }}</td>
+          <td><a href="/preview/{{ fname }}" target="_blank">👁️</a></td>
+          <td><a href="/download/{{ fname }}">⬇️</a></td>
+          <td>{% if meta.ip == request.remote_addr %}<button class="delete-btn" data-filename="{{ fname }}">🗑️</button>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
