@@ -1,4 +1,19 @@
-flask==3.0.3
-flask-socketio==5.3.6
-pyautogui==0.9.53
-pillow>=10.0.0,<13.0.0
+# Core server dependencies
+Flask==3.0.3
+Flask-SocketIO==5.3.6
+python-socketio==5.11.3
+python-engineio==4.9.1
+
+# Screen capture and image processing
+mss==9.0.1
+Pillow==11.0.0
+numpy==1.26.4
+
+# Optional but useful utilities
+eventlet==0.37.0
+gevent==24.2.1
+gevent-websocket==0.10.1
+
+# For automation/screenshot compatibility (not used in new method but kept for fallback)
+PyAutoGUI==0.9.54
+PyMsgBox==1.0.9

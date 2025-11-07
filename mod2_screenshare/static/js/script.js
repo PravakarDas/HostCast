@@ -1,51 +1,29 @@
+// Socket.io setup
 const socket = io();
-const canvas = document.getElementById("screenCanvas");
-const ctx = canvas.getContext("2d");
+const img = document.getElementById("screen");
+let lastFrame = 0;
 
-const startBtn = document.getElementById("startBtn");
-const stopBtn = document.getElementById("stopBtn");
-
-let streaming = false;
-let intervalId = null;
-
-// Request screenshot from server
-function requestScreenshot() {
-    if (streaming) {
-        socket.emit("request_screenshot");
-    }
-}
-
-// Receive screenshot and draw
-socket.on("screenshot", (data) => {
-    const img = new Image();
-    img.onload = function () {
-        // Maintain aspect ratio inside the canvas
-        canvas.width = canvas.clientWidth;
-        canvas.height = canvas.clientHeight;
-
-        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-        const x = (canvas.width / 2) - (img.width / 2) * scale;
-        const y = (canvas.height / 2) - (img.height / 2) * scale;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-    };
-    img.src = `data:image/jpeg;base64,${data.image}`;
+// Receive frames
+socket.on("frame", (data) => {
+  const now = Date.now();
+  if (now - lastFrame > 25) { // limit ~40 FPS
+    img.src = "data:image/jpeg;base64," + data;
+    lastFrame = now;
+  }
 });
 
-// Start/Stop streaming
-startBtn.addEventListener("click", () => {
-    if (!streaming) {
-        streaming = true;
-        intervalId = setInterval(requestScreenshot, 500); // every 0.5s
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
-    }
+// Fullscreen button
+const btnFullscreen = document.getElementById("btn-fullscreen");
+btnFullscreen.addEventListener("click", () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
 });
 
-stopBtn.addEventListener("click", () => {
-    streaming = false;
-    clearInterval(intervalId);
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
+// Stop button (just for demo)
+const btnStop = document.getElementById("btn-stop");
+btnStop.addEventListener("click", () => {
+  img.src = ""; // clear screen
 });
