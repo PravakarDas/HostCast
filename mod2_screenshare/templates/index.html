@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HostCast | Screen Share</title>
+    <link rel="icon" href="{{ url_for('static', filename='assets/favicon.ico') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-dark text-light d-flex flex-column align-items-center justify-content-center min-vh-100">
+
+    <div class="container text-center">
+        <h2 class="mb-3">📺 HostCast Live Screen Share</h2>
+        <canvas id="screenCanvas" class="screen-frame"></canvas>
+        <div class="controls mt-3">
+            <button id="startBtn" class="btn btn-success me-2">Start Stream</button>
+            <button id="stopBtn" class="btn btn-danger">Stop Stream</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

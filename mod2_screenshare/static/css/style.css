@@ -1,0 +1,25 @@
+body {
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.screen-frame {
+    width: 90%;
+    max-width: 1000px;
+    border-radius: 12px;
+    background: #1a1a1a;
+    box-shadow: 0 0 20px rgba(0, 255, 128, 0.2);
+    border: 2px solid rgba(0, 255, 128, 0.3);
+    aspect-ratio: 16 / 9; /* keeps fixed ratio */
+    object-fit: contain;
+}
+
+.controls button {
+    min-width: 120px;
+}
+
+@media (max-width: 768px) {
+    .screen-frame {
+        width: 100%;
+        border-radius: 8px;
+    }
+}
