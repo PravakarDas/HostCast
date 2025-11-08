@@ -18,13 +18,13 @@ socketio = SocketIO(
     ping_timeout=60,
     ping_interval=25,
     max_http_buffer_size=10**8,
-    logger=True,
-    engineio_logger=True
+    logger=False,  # Disable logging to keep terminal clean
+    engineio_logger=False  # Disable engine.io logging
 )
 
 # Configuration
 TARGET_WIDTH = 1280
-AUDIO_CHUNK = 2048  # Larger chunks = more stable
+AUDIO_CHUNK = 4096  # Larger chunks = smoother playback, less crackling
 AUDIO_FORMAT = pyaudio.paInt16
 AUDIO_RATE = 48000  # Match your system's native rate
 
@@ -92,8 +92,13 @@ def capture_audio():
         consecutive_errors = 0
         max_errors = 10
         
+        # Calculate precise timing for smooth audio
+        chunk_duration = AUDIO_CHUNK / rate  # Duration of each chunk in seconds
+        
         while is_streaming and consecutive_errors < max_errors:
             try:
+                chunk_start = time.time()
+                
                 # Non-blocking read with timeout
                 if stream.is_active():
                     data = stream.read(AUDIO_CHUNK, exception_on_overflow=False)
@@ -112,8 +117,11 @@ def capture_audio():
                         
                         consecutive_errors = 0  # Reset on success
                     
-                    # Small sleep to prevent CPU spinning
-                    time.sleep(0.001)
+                    # Precise timing to prevent buffer underruns
+                    elapsed = time.time() - chunk_start
+                    sleep_time = max(0, chunk_duration - elapsed)
+                    if sleep_time > 0:
+                        time.sleep(sleep_time)
                 else:
                     print("⚠️ Audio stream not active")
                     break
@@ -179,13 +187,6 @@ def stream_screen():
                     socketio.emit("frame", img_b64, namespace='/')
                     
                     frame_count += 1
-                    
-                    # FPS counter every 5 seconds
-                    if frame_count % 150 == 0:
-                        elapsed = time.time() - fps_time
-                        fps = 150 / elapsed
-                        print(f"📊 Screen FPS: {fps:.1f}")
-                        fps_time = time.time()
                     
                     # Frame timing
                     elapsed = time.time() - frame_start

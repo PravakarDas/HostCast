@@ -30,6 +30,11 @@ class HostCastClient {
         this.audioContext = null;
         this.isPlaying = true;
         
+        // Audio buffering for smooth playback
+        this.audioQueue = [];
+        this.nextPlayTime = 0;
+        this.isProcessingAudio = false;
+        
         // Initialize
         this.initSocket();
         this.initControls();
@@ -127,9 +132,14 @@ class HostCastClient {
             this.audioContext.resume();
         }
         
-        // Play audio if context is ready
+        // Add to queue for scheduled playback
         if (this.audioContext && this.audioContext.state === "running") {
-            this.playAudio(audioData);
+            this.audioQueue.push(audioData);
+            
+            // Start processing queue if not already running
+            if (!this.isProcessingAudio) {
+                this.processAudioQueue();
+            }
         } else if (this.audioPacketCount === 1) {
             console.warn("Audio context not running. Click anywhere to enable audio.");
         }
@@ -140,6 +150,7 @@ class HostCastClient {
         
         try {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.nextPlayTime = this.audioContext.currentTime;
             console.log("Audio context initialized - State:", this.audioContext.state);
             
             // Force resume if suspended
@@ -153,42 +164,75 @@ class HostCastClient {
         }
     }
 
-    playAudio(audioData) {
+    processAudioQueue() {
+        if (this.audioQueue.length === 0) {
+            this.isProcessingAudio = false;
+            return;
+        }
+        
+        this.isProcessingAudio = true;
+        const audioData = this.audioQueue.shift();
+        
         try {
+            // Decode base64 to binary
             const binaryString = atob(audioData.data);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
             
+            // Convert Int16 to Float32
             const int16Array = new Int16Array(bytes.buffer);
             const float32Array = new Float32Array(int16Array.length);
             for (let i = 0; i < int16Array.length; i++) {
                 float32Array[i] = int16Array[i] / 32768.0;
             }
             
+            // Create audio buffer
+            const numFrames = float32Array.length / audioData.channels;
             const audioBuffer = this.audioContext.createBuffer(
                 audioData.channels,
-                float32Array.length / audioData.channels,
+                numFrames,
                 audioData.rate
             );
             
+            // Fill audio buffer (interleaved to planar)
             for (let channel = 0; channel < audioData.channels; channel++) {
                 const channelData = audioBuffer.getChannelData(channel);
-                for (let i = 0; i < channelData.length; i++) {
+                for (let i = 0; i < numFrames; i++) {
                     channelData[i] = float32Array[i * audioData.channels + channel];
                 }
             }
             
+            // Calculate when to play this chunk
+            const currentTime = this.audioContext.currentTime;
+            
+            // If we're behind, catch up
+            if (this.nextPlayTime < currentTime) {
+                this.nextPlayTime = currentTime;
+            }
+            
+            // Schedule playback
             const source = this.audioContext.createBufferSource();
             source.buffer = audioBuffer;
             source.connect(this.audioContext.destination);
-            source.start();
+            source.start(this.nextPlayTime);
+            
+            // Update next play time
+            const chunkDuration = audioBuffer.duration;
+            this.nextPlayTime += chunkDuration;
+            
+            // Schedule next chunk
+            source.onended = () => {
+                this.processAudioQueue();
+            };
             
         } catch (error) {
             if (this.audioPacketCount < 5) {
                 console.warn("Audio playback error:", error);
             }
+            // Continue processing queue even on error
+            setTimeout(() => this.processAudioQueue(), 10);
         }
     }
 
