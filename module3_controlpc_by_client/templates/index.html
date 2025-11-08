@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HostCast Remote Control</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      background-color: #0a0a0a;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #screen-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      background: #000;
+    }
+
+    #screen {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    #screen.control-active {
+      cursor: none;
+    }
+
+    /* Custom cursor */
+    #custom-cursor {
+      position: fixed;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #00ff00;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10000;
+      display: none;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+      transition: opacity 0.1s;
+    }
+
+    #custom-cursor.active {
+      display: block;
+    }
+
+    /* Status bar */
+    #status-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 9999;
+      border-bottom: 2px solid #333;
+      transform: translateY(-100%);
+      transition: transform 0.3s ease;
+    }
+
+    #status-bar.visible {
+      transform: translateY(0);
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #f00;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.connected {
+      background: #0f0;
+    }
+
+    .status-dot.control {
+      background: #00ff00;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Control panel */
+    #control-panel {
+      position: fixed;
+      bottom: 25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.95);
+      padding: 15px 25px;
+      border-radius: 50px;
+      display: flex;
+      gap: 12px;
+      z-index: 9998;
+      border: 2px solid #333;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+    }
+
+    .ctrl-btn {
+      padding: 12px 22px;
+      border: none;
+      border-radius: 25px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .ctrl-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .ctrl-btn.active {
+      background: #00ff00;
+      color: #000;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+    }
+
+    .ctrl-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Warning overlay */
+    #warning-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.97);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10001;
+      backdrop-filter: blur(15px);
+    }
+
+    #warning-overlay.hidden {
+      display: none;
+    }
+
+    .warning-box {
+      background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+      padding: 50px;
+      border-radius: 25px;
+      max-width: 550px;
+      text-align: center;
+      border: 3px solid #00ff00;
+      box-shadow: 0 15px 50px rgba(0, 255, 0, 0.3);
+    }
+
+    .warning-box h2 {
+      color: #00ff00;
+      margin-bottom: 25px;
+      font-size: 32px;
+      font-weight: 700;
+      text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+    }
+
+    .warning-box p {
+      color: #ccc;
+      line-height: 1.8;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+
+    .warning-box .highlight {
+      color: #00ff00;
+      font-weight: 600;
+    }
+
+    .warning-box button {
+      padding: 18px 45px;
+      border: none;
+      border-radius: 30px;
+      background: #00ff00;
+      color: #000;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s;
+      box-shadow: 0 5px 20px rgba(0, 255, 0, 0.4);
+    }
+
+    .warning-box button:hover {
+      transform: scale(1.08);
+      box-shadow: 0 8px 30px rgba(0, 255, 0, 0.6);
+    }
+
+    /* Notification */
+    #notification {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 255, 0, 0.95);
+      color: #000;
+      padding: 25px 50px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 20px;
+      z-index: 10002;
+      display: none;
+      box-shadow: 0 10px 40px rgba(0, 255, 0, 0.5);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translate(-50%, -60%);
+        opacity: 0;
+      }
+      to {
+        transform: translate(-50%, -50%);
+        opacity: 1;
+      }
+    }
+
+    #notification.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Warning overlay -->
+  <div id="warning-overlay">
+    <div class="warning-box">
+      <h2>🎮 Remote Control Mode</h2>
+      <p>
+        To control the host computer, you must enter <span class="highlight">fullscreen mode</span>.<br><br>
+        Once in fullscreen, you'll have complete control over the host's <span class="highlight">mouse and keyboard</span>.<br><br>
+        Press <span class="highlight">ESC</span> or <span class="highlight">F11</span> to exit control mode anytime.
+      </p>
+      <button id="start-control-btn">🚀 Enter Fullscreen & Enable Control</button>
+    </div>
+  </div>
+
+  <!-- Custom cursor for control mode -->
+  <div id="custom-cursor"></div>
+
+  <!-- Status bar -->
+  <div id="status-bar" class="visible">
+    <div class="status-item">
+      <div class="status-dot" id="connection-dot"></div>
+      <span id="connection-text">Connecting...</span>
+    </div>
+    <div class="status-item">
+      <div class="status-dot" id="control-dot"></div>
+      <span id="control-text">Control: OFF</span>
+    </div>
+    <div class="status-item">
+      <span id="fps-text">FPS: 0</span>
+    </div>
+  </div>
+
+  <!-- Main screen display -->
+  <div id="screen-container">
+    <img id="screen" src="" alt="Remote Desktop">
+  </div>
+
+  <!-- Control panel -->
+  <div id="control-panel">
+    <button class="ctrl-btn" id="btn-control">🎮 Enable Control</button>
+    <button class="ctrl-btn" id="btn-sound">🔇 Sound</button>
+    <button class="ctrl-btn" id="btn-fullscreen">⛶ Fullscreen</button>
+    <button class="ctrl-btn" id="btn-disconnect">🔌 Disconnect</button>
+  </div>
+
+  <!-- Notification -->
+  <div id="notification"></div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    // Socket.IO connection
+    const socket = io({
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10
+    });
+
+    // DOM Elements
+    const img = document.getElementById('screen');
+    const customCursor = document.getElementById('custom-cursor');
+    const warningOverlay = document.getElementById('warning-overlay');
+    const startControlBtn = document.getElementById('start-control-btn');
+    const statusBar = document.getElementById('status-bar');
+    const connectionDot = document.getElementById('connection-dot');
+    const connectionText = document.getElementById('connection-text');
+    const controlDot = document.getElementById('control-dot');
+    const controlText = document.getElementById('control-text');
+    const fpsText = document.getElementById('fps-text');
+    const notification = document.getElementById('notification');
+    
+    const btnControl = document.getElementById('btn-control');
+    const btnSound = document.getElementById('btn-sound');
+    const btnFullscreen = document.getElementById('btn-fullscreen');
+    const btnDisconnect = document.getElementById('btn-disconnect');
+
+    // State variables
+    let screenInfo = { width: 1920, height: 1080 };
+    let controlEnabled = false;
+    let isFullscreen = false;
+    let isMuted = true;
+    let audioContext = null;
+    let scheduledTime = 0;
+    let frameCount = 0;
+    let lastFrameTime = 0;
+
+    // Show notification
+    function showNotification(message, duration = 2000) {
+      notification.textContent = message;
+      notification.classList.add('show');
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, duration);
+    }
+
+    // Initialize audio
+    function initAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        scheduledTime = audioContext.currentTime;
+        console.log('🎵 Audio initialized');
+        return true;
+      }
+      return true;
+    }
+
+    // Play audio buffer
+    function playAudioBuffer(data) {
+      if (!audioContext || isMuted) return;
+
+      try {
+        const binaryString = atob(data.data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const int16Array = new Int16Array(bytes.buffer);
+        const float32Array = new Float32Array(int16Array.length);
+        for (let i = 0; i < int16Array.length; i++) {
+          float32Array[i] = int16Array[i] / 32768.0;
+        }
+
+        const rate = data.rate || 48000;
+        const channels = data.channels || 2;
+        const numFrames = Math.floor(float32Array.length / channels);
+        const audioBuffer = audioContext.createBuffer(channels, numFrames, rate);
+
+        for (let channel = 0; channel < channels; channel++) {
+          const channelData = audioBuffer.getChannelData(channel);
+          for (let i = 0; i < numFrames; i++) {
+            channelData[i] = float32Array[i * channels + channel];
+          }
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+
+        const currentTime = audioContext.currentTime;
+        if (scheduledTime < currentTime || scheduledTime - currentTime > 1.0) {
+          scheduledTime = currentTime + 0.05;
+        }
+
+        source.start(scheduledTime);
+        scheduledTime += audioBuffer.duration;
+
+      } catch (e) {
+        console.error('Audio error:', e);
+        scheduledTime = audioContext.currentTime;
+      }
+    }
+
+    // Get relative mouse coordinates
+    function getRelativeCoords(clientX, clientY) {
+      const rect = img.getBoundingClientRect();
+      const x = (clientX - rect.left) / rect.width;
+      const y = (clientY - rect.top) / rect.height;
+      return {
+        x: Math.max(0, Math.min(1, x)),
+        y: Math.max(0, Math.min(1, y))
+      };
+    }
+
+    // Socket event handlers
+    socket.on('frame', (data) => {
+      const now = Date.now();
+      if (now - lastFrameTime > 25) {
+        img.src = 'data:image/jpeg;base64,' + data;
+        lastFrameTime = now;
+        frameCount++;
+      }
+    });
+
+    socket.on('audio', (data) => {
+      if (!isMuted) {
+        playAudioBuffer(data);
+      }
+    });
+
+    socket.on('screen_info', (data) => {
+      screenInfo = data;
+      console.log('📺 Screen:', screenInfo.width + 'x' + screenInfo.height);
+    });
+
+    socket.on('control_status', (data) => {
+      controlEnabled = data.enabled;
+      updateControlUI();
+    });
+
+    socket.on('connect', () => {
+      console.log('✅ Connected to server');
+      connectionDot.classList.add('connected');
+      connectionText.textContent = 'Connected';
+    });
+
+    socket.on('disconnect', () => {
+      console.log('❌ Disconnected');
+      connectionDot.classList.remove('connected');
+      connectionText.textContent = 'Disconnected';
+      controlEnabled = false;
+      updateControlUI();
+    });
+
+    // Mouse event handlers
+    img.addEventListener('mousemove', (e) => {
+      if (controlEnabled && isFullscreen) {
+        const coords = getRelativeCoords(e.clientX, e.clientY);
+        socket.emit('mouse_move', coords);
+        
+        customCursor.style.left = e.clientX + 'px';
+        customCursor.style.top = e.clientY + 'px';
+      }
+    });
+
+    img.addEventListener('mousedown', (e) => {
+      if (controlEnabled && isFullscreen) {
+        e.preventDefault();
+        const buttonMap = ['left', 'middle', 'right'];
+        socket.emit('mouse_click', {
+          button: buttonMap[e.button] || 'left',
+          action: 'down'
+        });
+        console.log('🖱️ Mouse down:', buttonMap[e.button]);
+      }
+    });
+
+    img.addEventListener('mouseup', (e) => {
+      if (controlEnabled && isFullscreen) {
+        e.preventDefault();
+        const buttonMap = ['left', 'middle', 'right'];
+        socket.emit('mouse_click', {
+          button: buttonMap[e.button] || 'left',
+          action: 'up'
+        });
+        console.log('🖱️ Mouse up:', buttonMap[e.button]);
+      }
+    });
+
+    img.addEventListener('dblclick', (e) => {
+      if (controlEnabled && isFullscreen) {
+        e.preventDefault();
+        socket.emit('mouse_click', {
+          button: 'left',
+          action: 'double'
+        });
+        console.log('🖱️ Double click');
+      }
+    });
+
+    img.addEventListener('wheel', (e) => {
+      if (controlEnabled && isFullscreen) {
+        e.preventDefault();
+        socket.emit('mouse_scroll', {
+          deltaX: e.deltaX,
+          deltaY: e.deltaY
+        });
+      }
+    }, { passive: false });
+
+    img.addEventListener('contextmenu', (e) => {
+      if (controlEnabled && isFullscreen) {
+        e.preventDefault();
+      }
+    });
+
+    // Keyboard event handlers
+    document.addEventListener('keydown', (e) => {
+      if (controlEnabled && isFullscreen) {
+        // Allow ESC and F11 to work normally
+        if (e.key !== 'Escape' && e.key !== 'F11') {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        
+        socket.emit('key_event', {
+          key: e.key,
+          action: 'down'
+        });
+        console.log('⌨️ Key down:', e.key);
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (controlEnabled && isFullscreen) {
+        if (e.key !== 'Escape' && e.key !== 'F11') {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        
+        socket.emit('key_event', {
+          key: e.key,
+          action: 'up'
+        });
+        console.log('⌨️ Key up:', e.key);
+      }
+    });
+
+    // Control button handlers
+    btnControl.addEventListener('click', () => {
+      if (!isFullscreen) {
+        warningOverlay.classList.remove('hidden');
+      } else {
+        controlEnabled = !controlEnabled;
+        socket.emit('enable_control', { enabled: controlEnabled });
+        updateControlUI();
+        
+        if (controlEnabled) {
+          showNotification('🎮 Remote Control ACTIVE');
+        } else {
+          showNotification('⚫ Remote Control DISABLED');
+        }
+      }
+    });
+
+    startControlBtn.addEventListener('click', async () => {
+      try {
+        await document.documentElement.requestFullscreen();
+        warningOverlay.classList.add('hidden');
+        
+        setTimeout(() => {
+          controlEnabled = true;
+          socket.emit('enable_control', { enabled: true });
+          updateControlUI();
+          showNotification('🎮 Remote Control ACTIVE');
+        }, 500);
+      } catch (e) {
+        alert('Failed to enter fullscreen. Please try again.');
+        console.error('Fullscreen error:', e);
+      }
+    });
+
+    btnSound.addEventListener('click', () => {
+      if (!audioContext) {
+        initAudio();
+      }
+
+      isMuted = !isMuted;
+      
+      if (isMuted) {
+        btnSound.textContent = '🔇 Sound';
+        btnSound.classList.remove('active');
+        if (audioContext) audioContext.suspend();
+      } else {
+        btnSound.textContent = '🔊 Sound';
+        btnSound.classList.add('active');
+        if (audioContext) audioContext.resume();
+        scheduledTime = audioContext.currentTime;
+      }
+    });
+
+    btnFullscreen.addEventListener('click', () => {
+      if (!isFullscreen) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    btnDisconnect.addEventListener('click', () => {
+      if (confirm('Disconnect from remote host?')) {
+        controlEnabled = false;
+        socket.emit('enable_control', { enabled: false });
+        socket.disconnect();
+        img.src = '';
+        connectionText.textContent = 'Disconnected';
+      }
+    });
+
+    // Fullscreen change handler
+    document.addEventListener('fullscreenchange', () => {
+      isFullscreen = !!document.fullscreenElement;
+      
+      if (!isFullscreen) {
+        if (controlEnabled) {
+          controlEnabled = false;
+          socket.emit('enable_control', { enabled: false });
+          updateControlUI();
+          showNotification('⚫ Control Disabled - Exited Fullscreen');
+        }
+        btnFullscreen.textContent = '⛶ Fullscreen';
+      } else {
+        btnFullscreen.textContent = '⛶ Exit Fullscreen';
+      }
+    });
+
+    // Update control UI
+    function updateControlUI() {
+      if (controlEnabled) {
+        btnControl.textContent = '🎮 Disable Control';
+        btnControl.classList.add('active');
+        controlText.textContent = 'Control: ON';
+        controlDot.classList.add('control');
+        img.classList.add('control-active');
+        customCursor.classList.add('active');
+      } else {
+        btnControl.textContent = '🎮 Enable Control';
+        btnControl.classList.remove('active');
+        controlText.textContent = 'Control: OFF';
+        controlDot.classList.remove('control');
+        img.classList.remove('control-active');
+        customCursor.classList.remove('active');
+      }
+    }
+
+    // FPS counter
+    setInterval(() => {
+      fpsText.textContent = `FPS: ${frameCount}`;
+      frameCount = 0;
+    }, 1000);
+
+    // Auto-hide status bar
+    let statusBarTimeout;
+    document.addEventListener('mousemove', (e) => {
+      if (e.clientY < 80) {
+        statusBar.classList.add('visible');
+        clearTimeout(statusBarTimeout);
+      } else if (!controlEnabled) {
+        statusBarTimeout = setTimeout(() => {
+          statusBar.classList.remove('visible');
+        }, 3000);
+      }
+    });
+
+    // Keep connection alive
+    setInterval(() => {
+      if (socket.connected) {
+        socket.emit('ping');
+      }
+    }, 15000);
+
+    console.log('🚀 HostCast Remote Control Client Ready');
+  </script>
+</body>
+</html>
