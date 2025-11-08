@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Client - HostCast</title>
+  <style>
+    body {
+      background: #1a1a1a;
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+    }
+    .status {
+      background: #2a2a2a;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 10px 0;
+    }
+    .log {
+      background: #000;
+      padding: 15px;
+      border-radius: 5px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+    .log div {
+      margin: 2px 0;
+    }
+    #screen {
+      max-width: 100%;
+      border: 2px solid #4CAF50;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 HostCast Connection Test</h1>
+  
+  <div class="status">
+    <h2>Connection Status</h2>
+    <p>Socket.IO: <span id="socketStatus">❌ Not Connected</span></p>
+    <p>Video Frames: <span id="videoCount">0</span></p>
+    <p>Audio Packets: <span id="audioCount">0</span></p>
+    <p>FPS: <span id="fps">0</span></p>
+  </div>
+
+  <button onclick="testAudio()">🔊 Test Audio (Click First!)</button>
+  <button onclick="clearLog()">🗑️ Clear Log</button>
+  
+  <h2>Screen Preview</h2>
+  <img id="screen" src="" alt="Waiting for stream...">
+  
+  <h2>Debug Log</h2>
+  <div class="log" id="log"></div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    const logEl = document.getElementById('log');
+    const screenEl = document.getElementById('screen');
+    const socketStatusEl = document.getElementById('socketStatus');
+    const videoCountEl = document.getElementById('videoCount');
+    const audioCountEl = document.getElementById('audioCount');
+    const fpsEl = document.getElementById('fps');
+    
+    let videoFrames = 0;
+    let audioPackets = 0;
+    let lastSecond = Date.now();
+    let framesThisSecond = 0;
+    
+    function log(message, color = '#0f0') {
+      const div = document.createElement('div');
+      div.style.color = color;
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(message);
+    }
+    
+    function clearLog() {
+      logEl.innerHTML = '';
+    }
+    
+    function updateFPS() {
+      const now = Date.now();
+      if (now - lastSecond >= 1000) {
+        fpsEl.textContent = framesThisSecond;
+        framesThisSecond = 0;
+        lastSecond = now;
+      }
+    }
+    
+    log('🚀 Initializing Socket.IO connection...', '#00f');
+    
+    const socket = io({
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10
+    });
+    
+    socket.on('connect', () => {
+      log('✅ Connected to server!', '#0f0');
+      socketStatusEl.textContent = '✅ Connected';
+      socketStatusEl.style.color = '#0f0';
+    });
+    
+    socket.on('disconnect', () => {
+      log('❌ Disconnected from server', '#f00');
+      socketStatusEl.textContent = '❌ Disconnected';
+      socketStatusEl.style.color = '#f00';
+    });
+    
+    socket.on('connect_error', (error) => {
+      log(`❌ Connection error: ${error}`, '#f00');
+    });
+    
+    socket.on('frame', (data) => {
+      videoFrames++;
+      framesThisSecond++;
+      videoCountEl.textContent = videoFrames;
+      screenEl.src = `data:image/jpeg;base64,${data}`;
+      
+      if (videoFrames === 1) {
+        log('📺 First video frame received!', '#0ff');
+      }
+      if (videoFrames % 100 === 0) {
+        log(`📺 Received ${videoFrames} video frames`, '#0ff');
+      }
+      updateFPS();
+    });
+    
+    socket.on('audio', (audioData) => {
+      audioPackets++;
+      audioCountEl.textContent = audioPackets;
+      
+      if (audioPackets === 1) {
+        log(`🔊 First audio packet received! (Rate: ${audioData.rate}Hz, Channels: ${audioData.channels})`, '#ff0');
+      }
+      if (audioPackets % 100 === 0) {
+        log(`🔊 Received ${audioPackets} audio packets`, '#ff0');
+      }
+    });
+    
+    // Audio test
+    let audioContext;
+    function testAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        log('🎵 Audio context created', '#f0f');
+      }
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+        log('🎵 Audio context resumed', '#f0f');
+      }
+      
+      // Play a test beep
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.frequency.value = 440;
+      gainNode.gain.value = 0.1;
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.2);
+      log('🔔 Test beep played', '#f0f');
+    }
+    
+    log('✅ Test client initialized. Waiting for data...', '#0f0');
+    log('💡 Click "Test Audio" button to enable audio playback', '#ff0');
+  </script>
+</body>
+</html>

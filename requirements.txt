@@ -17,3 +17,6 @@ gevent-websocket==0.10.1
 # For automation/screenshot compatibility (not used in new method but kept for fallback)
 PyAutoGUI==0.9.54
 PyMsgBox==1.0.9
+
+# Audio capture for Windows
+pyaudiowpatch>=0.2.12.5

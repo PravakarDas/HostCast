@@ -26,6 +26,7 @@ Because everything happens over the local network, it can work even without inte
 ## Features  
 - **File sharing**: Easily transfer files between devices in the local network.  
 - **Screen mirroring / extension**: Mirror or extend your display from one device to another on the same network.  
+- **Audio streaming** 🆕: Share system audio from host to all connected clients (Windows supported).
 - **Collaboration mode**: Multiple devices can join, share content or screens, enabling collaborative workflows.  
 - Cross‑platform (depending on implementation) and lightweight.  
 - MIT‑licensed: gives freedom to use, modify and distribute.
@@ -41,25 +42,58 @@ Because everything happens over the local network, it can work even without inte
    ```bash
    git clone https://github.com/PravakarDas/HostCast.git
    cd HostCast
+   ```
+
 2. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-    ```pip install -r requirements.txt```
-3. Launch the application (example):
-
-    ```python main.py```
-
->_(Adapt the command according to the actual entry‑point)_
+3. Launch the application:
+   
+   **For Screen + Audio Sharing:**
+   ```bash
+   cd mod2_screenshare
+   python ss.py
+   ```
+   
+   **For File Sharing:**
+   ```bash
+   cd module1_file_share
+   python file_server.py
+   ```
 ### Usage
 
-1. On the host device, launch the server or application for **HostCast**.  
-2. On other devices connected to the same network, open the client (browser or app) and connect to the host’s local IP address and port as prompted.  
-3. Through the UI you can:
-   - Share files between devices.  
-   - Mirror or extend your screen to another device.  
-4. For screen extension: select the **“Extend”** mode so the secondary device acts as an extra display (instead of just mirroring).  
-5. For file sharing: on one device choose **“Send”**, on the receiving device open **“Receive”**, then follow the UI prompts.
+#### Module 1: File Sharing
+1. Start the file server:
+   ```bash
+   cd module1_file_share
+   python file_server.py
+   ```
+2. Access from browser: `http://<host-ip>:8080`
+3. Upload and download files between devices
 
-> _Specific UI details, ports, and other options should be found in the source code or the in‑app help guide._
+#### Module 2: Screen + Audio Sharing 🆕
+1. Start the screen share server:
+   ```bash
+   cd mod2_screenshare
+   python ss.py
+   ```
+2. Access from any device: `http://<host-ip>:5000`
+3. **Click on the page** to enable audio
+4. Enjoy live screen and audio streaming!
+5. Use controls: volume slider, mute button, fullscreen mode
+
+**Features:**
+- 🎥 Real-time screen streaming (~40 FPS)
+- 🔊 System audio streaming (Windows WASAPI)
+- 🎮 Volume control and mute
+- 🖥️ Fullscreen mode
+- 📊 Connection status indicators
+
+See `mod2_screenshare/QUICKSTART.md` for detailed instructions.
+
+> _To find your host IP address, run `ipconfig` (Windows) or `ifconfig` (Linux/Mac)_
 ## How it Works
 
 At a high level:
@@ -68,9 +102,44 @@ At a high level:
 - Clients connect to the server via WebSocket / HTTP.  
 - File transfers occur via chunked upload/download across the local network.  
 - Screen capture (on the host) and streaming (to client) uses OS screen‑capture APIs + WebRTC / WebSocket.  
-- The “extend screen” mode treats the client device as an additional display, sending the extra region of the host’s desktop to the client.
+- **Audio capture** uses Windows WASAPI loopback to stream system audio in real-time.
+- Audio and video are transmitted as base64-encoded data via Socket.IO for low latency.
+- The "extend screen" mode treats the client device as an additional display, sending the extra region of the host's desktop to the client.
 
 _(Implementation details may vary. Refer to the source modules for exact behaviour.)_
+
+### Architecture
+
+```
+┌──────────────────────────────────┐
+│   HOST COMPUTER (Windows)        │
+│                                  │
+│  ┌─────────┐    ┌─────────┐    │
+│  │ Screen  │    │  Audio  │    │
+│  │Capture  │    │(WASAPI) │    │
+│  └────┬────┘    └────┬────┘    │
+│       │              │          │
+│       └──────┬───────┘          │
+│              │                  │
+│     ┌────────▼────────┐        │
+│     │ Flask+SocketIO  │        │
+│     │   Port 5000     │        │
+│     └────────┬────────┘        │
+└──────────────┼──────────────────┘
+               │
+    WebSocket (Local Network)
+               │
+┌──────────────▼──────────────────┐
+│   CLIENT DEVICE (Browser)       │
+│                                 │
+│  ┌──────────┐  ┌─────────────┐ │
+│  │  Video   │  │Web Audio API│ │
+│  │ Display  │  │  Playback   │ │
+│  └──────────┘  └─────────────┘ │
+│                                 │
+│  Controls: Volume, Mute, etc.  │
+└─────────────────────────────────┘
+```
 
 ## Configuration & Customization
 
