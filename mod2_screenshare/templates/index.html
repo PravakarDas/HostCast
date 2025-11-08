@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HostCast - Screen Share</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Background Elements -->
+    <div class="neon-bg">
+        <div class="neon-orb neon-orb-1"></div>
+        <div class="neon-orb neon-orb-2"></div>
+        <div class="neon-orb neon-orb-3"></div>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-icon">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="4" y="4" width="24" height="24" rx="4" stroke="url(#gradient1)" stroke-width="2"/>
+                            <circle cx="16" cy="16" r="6" fill="url(#gradient1)"/>
+                            <defs>
+                                <linearGradient id="gradient1" x1="4" y1="4" x2="28" y2="28">
+                                    <stop offset="0%" stop-color="#00f2ff"/>
+                                    <stop offset="100%" stop-color="#7b2ff7"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <h1 class="logo-text">HostCast</h1>
+                </div>
+                
+                <div class="status-indicators">
+                    <div class="status-badge" id="connection-status">
+                        <div class="status-dot status-connecting"></div>
+                        <span class="status-text">Connecting...</span>
+                    </div>
+                    <div class="status-badge" id="stream-status">
+                        <div class="status-icon">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <rect x="2" y="4" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M6 7L10 9.5L6 12V7Z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <span class="status-text">Waiting for stream...</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Screen Area -->
+        <main class="main-content">
+            <div class="screen-wrapper">
+                <div class="screen-container" id="screen-container">
+                    <img id="screen" alt="Screen Share Stream" />
+                    <div class="loading-state" id="loading-state">
+                        <div class="loading-spinner">
+                            <div class="spinner-ring"></div>
+                            <div class="spinner-ring"></div>
+                            <div class="spinner-ring"></div>
+                        </div>
+                        <p class="loading-text">Initializing stream...</p>
+                    </div>
+                </div>
+                
+                <!-- Control Panel -->
+                <div class="control-panel" id="control-panel">
+                    <div class="control-group">
+                        <button class="control-btn" id="btn-play" data-tooltip="Play/Pause">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M6 4L14 10L6 16V4Z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        
+                        <button class="control-btn" id="btn-volume" data-tooltip="Volume">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M10 5L6 8H3V12H6L10 15V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M13 8C13.5 8.5 14 9.5 14 10C14 10.5 13.5 11.5 13 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M15 6C16 7 17 8.5 17 10C17 11.5 16 13 15 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                        
+                        <button class="control-btn" id="btn-fullscreen" data-tooltip="Fullscreen">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M3 7V4H6M14 4H17V7M17 13V16H14M6 16H3V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <div class="fps-counter" id="fps-counter">
+                            <span class="fps-label">FPS</span>
+                            <span class="fps-value" id="fps-value">0</span>
+                        </div>
+                        
+                        <div class="quality-indicator" id="quality-indicator">
+                            <div class="quality-bar">
+                                <div class="quality-fill" id="quality-fill"></div>
+                            </div>
+                            <span class="quality-text" id="quality-text">HD</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stats Panel (Collapsible) -->
+            <div class="stats-panel" id="stats-panel">
+                <button class="stats-toggle" id="stats-toggle">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="3" width="4" height="10" rx="1" fill="currentColor"/>
+                        <rect x="7" y="6" width="4" height="7" rx="1" fill="currentColor"/>
+                        <rect x="12" y="8" width="2" height="5" rx="1" fill="currentColor"/>
+                    </svg>
+                    <span>Stats</span>
+                </button>
+                
+                <div class="stats-content" id="stats-content">
+                    <div class="stat-item">
+                        <div class="stat-label">Video Frames</div>
+                        <div class="stat-value" id="stat-video-frames">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Audio Packets</div>
+                        <div class="stat-value" id="stat-audio-packets">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Latency</div>
+                        <div class="stat-value" id="stat-latency">0 ms</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Data Rate</div>
+                        <div class="stat-value" id="stat-data-rate">0 KB/s</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <span class="footer-text">Powered by HostCast</span>
+                    <span class="footer-separator">•</span>
+                    <span class="footer-text">Real-time Screen & Audio Streaming</span>
+                </div>
+                <div class="footer-actions">
+                    <button class="footer-btn" id="btn-settings">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M8 1V3M8 13V15M15 8H13M3 8H1M12.5 3.5L11 5M5 11L3.5 12.5M12.5 12.5L11 11M5 5L3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        Settings
+                    </button>
+                    <button class="footer-btn footer-btn-primary" id="btn-share">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <circle cx="12" cy="4" r="2" stroke="currentColor" stroke-width="1.5"/>
+                            <circle cx="4" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/>
+                            <circle cx="12" cy="12" r="2" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M6 7L10 5M6 9L10 11" stroke="currentColor" stroke-width="1.5"/>
+                        </svg>
+                        Share
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- Custom Script -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

@@ -18,8 +18,8 @@ socketio = SocketIO(
     ping_timeout=60,
     ping_interval=25,
     max_http_buffer_size=10**8,
-    logger=False,
-    engineio_logger=False
+    logger=True,
+    engineio_logger=True
 )
 
 # Configuration
@@ -36,6 +36,10 @@ connected_clients = 0
 @app.route('/')
 def index():
     return render_template("index.html")
+
+@app.route('/test')
+def test():
+    return render_template("test.html")
 
 def get_loopback_device(p):
     """Get the WASAPI loopback device for system audio capture"""
