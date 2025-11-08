@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HostCast Extended Display</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Setup screen */
+    #setup-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+
+    #setup-screen.hidden {
+      display: none;
+    }
+
+    .setup-box {
+      background: rgba(20, 20, 30, 0.95);
+      padding: 50px;
+      border-radius: 25px;
+      max-width: 650px;
+      border: 3px solid #00ff00;
+      box-shadow: 0 20px 60px rgba(0, 255, 0, 0.3);
+    }
+
+    .setup-box h1 {
+      color: #00ff00;
+      text-align: center;
+      margin-bottom: 15px;
+      font-size: 36px;
+      text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+    }
+
+    .setup-box .subtitle {
+      color: #888;
+      text-align: center;
+      margin-bottom: 40px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .info-box {
+      background: rgba(0, 255, 0, 0.1);
+      border: 2px solid #00ff00;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .info-box h3 {
+      color: #00ff00;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    .info-box p {
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .info-box .highlight {
+      color: #00ff00;
+      font-weight: 600;
+    }
+
+    .form-group {
+      margin-bottom: 30px;
+    }
+
+    .form-group label {
+      display: block;
+      color: #00ff00;
+      font-weight: 600;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid #333;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #00ff00;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+    }
+
+    .position-grid {
+      display: grid;
+      grid-template-areas:
+        ". top ."
+        "left center right"
+        ". bottom .";
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .position-btn {
+      padding: 25px;
+      border: 2px solid #333;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #888;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      font-weight: 600;
+      font-size: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .position-btn:hover {
+      border-color: #555;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .position-btn.selected {
+      border-color: #00ff00;
+      background: rgba(0, 255, 0, 0.15);
+      color: #00ff00;
+      box-shadow: 0 0 25px rgba(0, 255, 0, 0.4);
+    }
+
+    .position-btn.center {
+      background: rgba(100, 100, 100, 0.3);
+      cursor: not-allowed;
+      color: #444;
+      border-color: #444;
+    }
+
+    .position-btn[data-position="top"] { grid-area: top; }
+    .position-btn[data-position="left"] { grid-area: left; }
+    .position-btn.center { grid-area: center; }
+    .position-btn[data-position="right"] { grid-area: right; }
+    .position-btn[data-position="bottom"] { grid-area: bottom; }
+
+    .position-icon {
+      font-size: 28px;
+    }
+
+    .start-btn {
+      width: 100%;
+      padding: 20px;
+      border: none;
+      border-radius: 30px;
+      background: #00ff00;
+      color: #000;
+      font-weight: 700;
+      font-size: 18px;
+      cursor: pointer;
+      margin-top: 30px;
+      transition: all 0.3s;
+      box-shadow: 0 5px 25px rgba(0, 255, 0, 0.4);
+    }
+
+    .start-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 35px rgba(0, 255, 0, 0.6);
+    }
+
+    .start-btn:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Extended display screen */
+    #extended-screen {
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+    }
+
+    #extended-screen.active {
+      display: flex;
+    }
+
+    /* Top bar */
+    #top-bar {
+      background: rgba(0, 0, 0, 0.95);
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #00ff00;
+      z-index: 1000;
+    }
+
+    .bar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #00ff00;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #00ff00;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .bar-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .bar-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 20px;
+      background: rgba(0, 255, 0, 0.2);
+      color: #00ff00;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .bar-btn:hover {
+      background: rgba(0, 255, 0, 0.3);
+      transform: scale(1.05);
+    }
+
+    .bar-btn.active {
+      background: #00ff00;
+      color: #000;
+    }
+
+    /* Display area */
+    #display-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      background: #000;
+      cursor: none;
+    }
+
+    #screen {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* Custom cursor */
+    #client-cursor {
+      position: fixed;
+      width: 18px;
+      height: 18px;
+      border: 3px solid #00ff00;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 20px rgba(0, 255, 0, 1);
+      display: block;
+    }
+
+    /* Info overlay */
+    #info-overlay {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 255, 0, 0.95);
+      color: #000;
+      padding: 30px 50px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 24px;
+      z-index: 10002;
+      display: none;
+      box-shadow: 0 10px 40px rgba(0, 255, 0, 0.5);
+    }
+
+    #info-overlay.show {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Setup Screen -->
+  <div id="setup-screen">
+    <div class="setup-box">
+      <h1>🖥️ Extended Display Setup</h1>
+      <p class="subtitle">Turn this device into an extended monitor for your host PC</p>
+
+      <div class="info-box">
+        <h3>📌 How it works:</h3>
+        <p>
+          Choose where this display appears relative to your host PC.<br>
+          Move your mouse <span class="highlight">PAST the edge</span> of your host screen to see it here.<br>
+          Example: Select "Right" → move mouse past right edge of host screen.
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label>Display Name</label>
+        <input type="text" id="display-name" placeholder="My Extended Display" value="Extended Monitor">
+      </div>
+
+      <div class="form-group">
+        <label>Display Position (relative to host PC screen)</label>
+        <div class="position-grid">
+          <div class="position-btn" data-position="top">
+            <div class="position-icon">⬆️</div>
+            <div>TOP</div>
+          </div>
+          <div class="position-btn" data-position="left">
+            <div class="position-icon">⬅️</div>
+            <div>LEFT</div>
+          </div>
+          <div class="position-btn center">
+            <div class="position-icon">🖥️</div>
+            <div>HOST PC</div>
+          </div>
+          <div class="position-btn selected" data-position="right">
+            <div class="position-icon">➡️</div>
+            <div>RIGHT</div>
+          </div>
+          <div class="position-btn" data-position="bottom">
+            <div class="position-icon">⬇️</div>
+            <div>BOTTOM</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Resolution (Auto-detected)</label>
+        <input type="text" id="resolution" readonly>
+      </div>
+
+      <button class="start-btn" id="start-extended">🚀 Start Extended Display</button>
+    </div>
+  </div>
+
+  <!-- Extended Display Screen -->
+  <div id="extended-screen">
+    <!-- Top bar -->
+    <div id="top-bar">
+      <div class="bar-item">
+        <div class="status-dot"></div>
+        <span id="status-text">Extended Display Active</span>
+      </div>
+      <div class="bar-item">
+        <span id="position-text">Position: Right</span>
+      </div>
+      <div class="bar-item">
+        <span id="bounds-text">Waiting for host...</span>
+      </div>
+      <div class="bar-controls">
+        <button class="bar-btn" id="btn-sound">🔇 Sound</button>
+        <button class="bar-btn active" id="btn-fullscreen">⛶ Fullscreen</button>
+        <button class="bar-btn" id="btn-exit">❌ Exit</button>
+      </div>
+    </div>
+
+    <!-- Display area -->
+    <div id="display-container">
+      <img id="screen" src="" alt="Extended Display">
+      <div id="client-cursor"></div>
+    </div>
+  </div>
+
+  <!-- Info overlay -->
+  <div id="info-overlay"></div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    // Socket connection
+    const socket = io({
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000
+    });
+
+    // DOM elements
+    const setupScreen = document.getElementById('setup-screen');
+    const extendedScreen = document.getElementById('extended-screen');
+    const displayNameInput = document.getElementById('display-name');
+    const resolutionInput = document.getElementById('resolution');
+    const startBtn = document.getElementById('start-extended');
+    const positionBtns = document.querySelectorAll('.position-btn:not(.center)');
+    
+    const img = document.getElementById('screen');
+    const clientCursor = document.getElementById('client-cursor');
+    const infoOverlay = document.getElementById('info-overlay');
+    const statusText = document.getElementById('status-text');
+    const positionText = document.getElementById('position-text');
+    const boundsText = document.getElementById('bounds-text');
+    
+    const btnSound = document.getElementById('btn-sound');
+    const btnFullscreen = document.getElementById('btn-fullscreen');
+    const btnExit = document.getElementById('btn-exit');
+
+    // State
+    let selectedPosition = 'right';
+    let displayConfig = null;
+    let isMuted = true;
+    let audioContext = null;
+    let scheduledTime = 0;
+    let isFullscreen = false;
+
+    // Set resolution from screen size
+    resolutionInput.value = `${screen.width}x${screen.height}`;
+
+    // Position selector
+    positionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        positionBtns.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedPosition = btn.dataset.position;
+      });
+    });
+
+    // Show info message
+    function showInfo(message, duration = 2000) {
+      infoOverlay.textContent = message;
+      infoOverlay.classList.add('show');
+      setTimeout(() => {
+        infoOverlay.classList.remove('show');
+      }, duration);
+    }
+
+    // Initialize audio
+    function initAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        scheduledTime = audioContext.currentTime;
+        console.log('🎵 Audio initialized');
+        return true;
+      }
+      return true;
+    }
+
+    // Play audio
+    function playAudioBuffer(data) {
+      if (!audioContext || isMuted) return;
+
+      try {
+        const binaryString = atob(data.data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const int16Array = new Int16Array(bytes.buffer);
+        const float32Array = new Float32Array(int16Array.length);
+        for (let i = 0; i < int16Array.length; i++) {
+          float32Array[i] = int16Array[i] / 32768.0;
+        }
+
+        const rate = data.rate || 48000;
+        const channels = data.channels || 2;
+        const numFrames = Math.floor(float32Array.length / channels);
+        const audioBuffer = audioContext.createBuffer(channels, numFrames, rate);
+
+        for (let channel = 0; channel < channels; channel++) {
+          const channelData = audioBuffer.getChannelData(channel);
+          for (let i = 0; i < numFrames; i++) {
+            channelData[i] = float32Array[i * channels + channel];
+          }
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+
+        const currentTime = audioContext.currentTime;
+        if (scheduledTime < currentTime || scheduledTime - currentTime > 1.0) {
+          scheduledTime = currentTime + 0.05;
+        }
+
+        source.start(scheduledTime);
+        scheduledTime += audioBuffer.duration;
+
+      } catch (e) {
+        console.error('Audio error:', e);
+        scheduledTime = audioContext.currentTime;
+      }
+    }
+
+    // Start extended display
+    startBtn.addEventListener('click', async () => {
+      const displayName = displayNameInput.value.trim() || 'Extended Monitor';
+      const [width, height] = resolutionInput.value.split('x').map(Number);
+
+      // Send configuration to server
+      socket.emit('set_display_mode', {
+        mode: 'extended',
+        position: selectedPosition,
+        resolution: { width, height },
+        display_name: displayName
+      });
+
+      // Enter fullscreen
+      try {
+        await document.documentElement.requestFullscreen();
+        setupScreen.classList.add('hidden');
+        extendedScreen.classList.add('active');
+        positionText.textContent = `Position: ${selectedPosition.toUpperCase()}`;
+        showInfo('🎮 Extended Display Active', 3000);
+      } catch (e) {
+        alert('Please allow fullscreen to continue');
+      }
+    });
+
+    // Socket events
+    socket.on('frame', (data) => {
+      img.src = 'data:image/jpeg;base64,' + data;
+    });
+
+    socket.on('audio', (data) => {
+      if (!isMuted) {
+        playAudioBuffer(data);
+      }
+    });
+
+    socket.on('display_configured', (data) => {
+      displayConfig = data;
+      const bounds = data.virtual_bounds;
+      const host = data.host_screen;
+      
+      boundsText.textContent = `Virtual: X(${bounds.x_min} to ${bounds.x_max}) Y(${bounds.y_min} to ${bounds.y_max})`;
+      
+      console.log('📺 Display configured:');
+      console.log('   Host screen:', host.width + 'x' + host.height);
+      console.log('   Virtual bounds:', bounds);
+      console.log('   Move host cursor past edge to see it here!');
+    });
+
+    socket.on('connect', () => {
+      console.log('✅ Connected to host');
+      statusText.textContent = '🟢 Connected';
+    });
+
+    socket.on('disconnect', () => {
+      console.log('❌ Disconnected');
+      statusText.textContent = '🔴 Disconnected';
+    });
+
+    // Mouse tracking for custom cursor
+    document.addEventListener('mousemove', (e) => {
+      if (extendedScreen.classList.contains('active')) {
+        clientCursor.style.left = e.clientX + 'px';
+        clientCursor.style.top = e.clientY + 'px';
+      }
+    });
+
+    // Mouse events (send to host)
+    img.addEventListener('mousemove', (e) => {
+      const rect = img.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      
+      socket.emit('client_mouse_move', {
+        x: Math.max(0, Math.min(1, x)),
+        y: Math.max(0, Math.min(1, y))
+      });
+    });
+
+    img.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const buttonMap = ['left', 'middle', 'right'];
+      socket.emit('client_mouse_click', {
+        button: buttonMap[e.button],
+        action: 'down'
+      });
+    });
+
+    img.addEventListener('mouseup', (e) => {
+      e.preventDefault();
+      const buttonMap = ['left', 'middle', 'right'];
+      socket.emit('client_mouse_click', {
+        button: buttonMap[e.button],
+        action: 'up'
+      });
+    });
+
+    img.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      socket.emit('client_mouse_scroll', {
+        deltaX: e.deltaX,
+        deltaY: e.deltaY
+      });
+    }, { passive: false });
+
+    // Keyboard events
+    document.addEventListener('keydown', (e) => {
+      if (extendedScreen.classList.contains('active')) {
+        if (e.key !== 'Escape' && e.key !== 'F11') {
+          e.preventDefault();
+        }
+        socket.emit('client_key_event', {
+          key: e.key,
+          action: 'down'
+        });
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (extendedScreen.classList.contains('active')) {
+        if (e.key !== 'Escape' && e.key !== 'F11') {
+          e.preventDefault();
+        }
+        socket.emit('client_key_event', {
+          key: e.key,
+          action: 'up'
+        });
+      }
+    });
+
+    // Control buttons
+    btnSound.addEventListener('click', () => {
+      if (!audioContext) initAudio();
+      
+      isMuted = !isMuted;
+      if (isMuted) {
+        btnSound.textContent = '🔇 Sound';
+        btnSound.classList.remove('active');
+        if (audioContext) audioContext.suspend();
+      } else {
+        btnSound.textContent = '🔊 Sound';
+        btnSound.classList.add('active');
+        if (audioContext) audioContext.resume();
+        scheduledTime = audioContext.currentTime;
+      }
+    });
+
+    btnFullscreen.addEventListener('click', () => {
+      if (!isFullscreen) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    btnExit.addEventListener('click', () => {
+      if (confirm('Exit extended display mode?')) {
+        socket.disconnect();
+        location.reload();
+      }
+    });
+
+    // Fullscreen handler
+    document.addEventListener('fullscreenchange', () => {
+      isFullscreen = !!document.fullscreenElement;
+      if (!isFullscreen) {
+        btnFullscreen.textContent = '⛶ Fullscreen';
+        btnFullscreen.classList.remove('active');
+      } else {
+        btnFullscreen.textContent = '⛶ Exit';
+        btnFullscreen.classList.add('active');
+      }
+    });
+
+    // Keep alive
+    setInterval(() => {
+      if (socket.connected) {
+        socket.emit('ping');
+      }
+    }, 15000);
+
+    console.log('🖥️ Extended Display Client Ready');
+  </script>
+</body>
+</html>

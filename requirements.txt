@@ -24,3 +24,7 @@ pyaudiowpatch>=0.2.12.5
 #For controling with kewyboard and mouse
 pynput==1.8.1
 keyboard==0.13.5
+
+#Extended Display support
+pynput==1.8.1
+pywin32==311
